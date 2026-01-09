@@ -988,21 +988,28 @@ with expander:
     with c1:
         st.markdown(
             """
-            **Facteurs Dominants :**
-            1. **Statut Fumeur** : Premier predicteur de cout
-            2. **IMC (BMI)** : Predicteur multiplicateur chez les fumeurs
-            3. **Age** : Augmentation reguliere et stratifiee des couts
+            **1. Le Tabagisme (Game Changer) :**
+            - **Non-fumeur** : ~8 434 $
+            - **Fumeur** : ~32 050 $ (**Impact x4**)
+            
+            **2. Synergie IMC x Tabac :**
+            - Non-Fumeur + IMC >= 30 : **8 842 $**
+            - Fumeur + IMC >= 30 : **41 557 $** (**Risque x4.7**)
+            - L'obésité multiplie par 5 le coût pour un fumeur vs non-fumeur.
             """
         )
 
     with c2:
         st.markdown(
             """
-            **Analyse des Risques (S2) :**
-            - **Desequilibre** : Moins de fumeurs (~20%), biais potentiel
-            - **Outliers** : Charges > 45k$ (fumeurs avec IMC eleve)
-            - **Non-linearite** : Interaction IMC x Smoker critique
-            - **Multicolinearite** : Faible entre variables predictives
+            **3. Évolution Âge & Tabac :**
+            - Jeune (18-35) Non-fumeur : **~4 800 $**
+            - Senior (51+) Non-fumeur : **~13 500 $**
+            - Un jeune fumeur (**~28 100 $**) coûte déjà 2x plus cher qu'un senior non-fumeur.
+            
+            **4. Zoom Régions & Genre :**
+            - **Southeast** : Plus chère (**14 735 $**) car plus de fumeurs (25%).
+            - **Genre** : Les hommes fumeurs sont les plus coûteux (~33k$).
             """
         )
 
