@@ -1,214 +1,234 @@
 import streamlit as st
 import pandas as pd
-import seaborn as sns
-import matplotlib.pyplot as plt
+import numpy as np
+import plotly.express as px
+import plotly.graph_objects as go
 
+# ==========================================
+# Configuration & Style
+# ==========================================
+st.set_page_config(
+    page_title="Insurance Analytics Dashboard",
+    page_icon="📊",
+    layout="wide",
+    initial_sidebar_state="expanded"
+)
 
-# Configuration générale
-st.set_page_config(page_title="EDA Insurance", layout="wide")
-sns.set_style("whitegrid")
+# Custom CSS for a premium look
+st.markdown("""
+    <style>
+    .main {
+        background-color: #f8f9fa;
+    }
+    .stMetric {
+        background-color: #ffffff;
+        padding: 15px;
+        border-radius: 10px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    }
+    h1, h2, h3 {
+        color: #1e3a8a;
+    }
+    </style>
+""", unsafe_allow_html=True)
 
-PALETTE_SMOKER = {"yes": "red", "no": "blue"}
-PALETTE_SEX = {"male": "steelblue", "female": "salmon"}
-
-
-# =========================
-# Chargement des données
-# =========================
+# ==========================================
+# Data Loading
+# ==========================================
 @st.cache_data
-def load_data() -> pd.DataFrame:
-    return pd.read_csv("data/insurance.csv")
+def load_data():
+    df = pd.read_csv("data/insurance.csv")
+    # Basic cleaning
+    df['smoker_label'] = df['smoker'].map({'yes': 'Fumeur', 'no': 'Non-fumeur'})
+    return df
 
+try:
+    df = load_data()
+except Exception as e:
+    st.error(f"Erreur de chargement des données : {e}")
+    st.stop()
 
-df = load_data()
+# ==========================================
+# Sidebar Filters
+# ==========================================
+st.sidebar.image("https://www.google.com/images/branding/googlelogo/2x/googlelogo_color_92x30dp.png", width=150) # Placeholder for branding
+st.sidebar.title("Configuration")
+st.sidebar.markdown("---")
 
+region_list = ["Toutes"] + list(df['region'].unique())
+selected_region = st.sidebar.selectbox("Région Géographique", region_list)
 
-# Titre
-st.title(" Mini-dashboard EDA — Insurance Dataset")
-
-st.markdown(
-    """
-Exploration interactive du dataset **Insurance Charges**  
-Objectif : identifier les facteurs influençant les charges d’assurance.
-"""
+age_range = st.sidebar.slider(
+    "Tranche d'âge",
+    int(df['age'].min()),
+    int(df['age'].max()),
+    (int(df['age'].min()), int(df['age'].max()))
 )
 
-
-# Filtres
-
-st.sidebar.header("Filtres")
-
-smoker_filter = st.sidebar.multiselect(
-    "Tabagisme",
-    options=df["smoker"].unique(),
-    default=df["smoker"].unique(),
-)
-
-region_filter = st.sidebar.multiselect(
-    "Région",
-    options=df["region"].unique(),
-    default=df["region"].unique(),
-)
-
+# Filtering logic
 df_filtered = df[
-    (df["smoker"].isin(smoker_filter))
-    & (df["region"].isin(region_filter))
+    (df['age'] >= age_range[0]) & (df['age'] <= age_range[1])
 ]
+if selected_region != "Toutes":
+    df_filtered = df_filtered[df_filtered['region'] == selected_region]
 
-st.sidebar.markdown(f"**Observations : {df_filtered.shape[0]}**")
+# ==========================================
+# Header & Key Metrics
+# ==========================================
+st.title("🛡️ Analyse des Risques & Charges d'Assurance")
+st.markdown(f"**Semaine 1 : Exploration des Facteurs de Coûts** | {df_filtered.shape[0]} observations sélectionnées")
 
-# Charges & tabagisme
-st.header(" Charges selon le statut fumeur")
+col1, col2, col3, col4 = st.columns(4)
+col1.metric("Charges Moyennes", f"{df_filtered['charges'].mean():,.0f} $", delta=None)
+col2.metric("Âge Médian", f"{df_filtered['age'].median():.0f} ans")
+col3.metric("IMC Moyen", f"{df_filtered['bmi'].mean():.1f}")
+col4.metric("% Fumeurs", f"{(df_filtered['smoker'] == 'yes').mean():.1%}")
 
-smoker_stats = (
-    df_filtered
-    .groupby("smoker")["charges"]
-    .agg(["count", "mean", "median"])
-    .reset_index()
-)
+st.markdown("---")
 
-st.dataframe(smoker_stats)
+# ==========================================
+# Main Dashboard Tabs
+# ==========================================
+tab_dist, tab_health, tab_demo = st.tabs([
+    "📈 Distribution des Coûts", 
+    "🩺 Facteurs de Santé", 
+    "🌍 Démographie & Profils"
+])
 
-fig, ax = plt.subplots()
-sns.boxplot(
-    data=df_filtered,
-    x="smoker",
-    y="charges",
-    palette=PALETTE_SMOKER,
-    ax=ax,
-)
-ax.set_title("Charges selon le statut fumeur")
-st.pyplot(fig)
+# --- Tab 1: Distribution ---
+with tab_dist:
+    st.subheader("Analyse de la Variable Cible : Charges")
+    
+    col_left, col_right = st.columns([1, 1])
+    
+    with col_left:
+        use_log = st.checkbox("Appliquer l'échelle logarithmique (Log scale)", help="Aide à visualiser les distributions asymétriques")
+        
+        fig_hist = px.histogram(
+            df_filtered, 
+            x="charges", 
+            nbins=50,
+            color_discrete_sequence=['#3b82f6'],
+            marginal="box",
+            log_x=use_log,
+            title="Distribution des charges médicales"
+        )
+        fig_hist.update_layout(showlegend=False, plot_bgcolor="rgba(0,0,0,0)")
+        st.plotly_chart(fig_hist, use_container_width=True)
+        
+    with col_right:
+        st.info("""
+        **Observation Métier :**
+        - La distribution est fortement **asymétrique à droite** (skewness positive).
+        - La majorité des dossiers sont sous les 15k$, mais une minorité génère des coûts très élevés (>40k$).
+        - **Impact IA :** Une transformation Log sera probablement nécessaire pour améliorer la performance de la régression linéaire.
+        """)
+        
+        # Charges vs Smoker Insight directly below info
+        fig_box_smoker = px.box(
+            df_filtered, 
+            x="smoker_label", 
+            y="charges", 
+            color="smoker_label",
+            points="all",
+            title="Répartition des charges par statut fumeur",
+            color_discrete_map={'Fumeur': '#ef4444', 'Non-fumeur': '#10b981'}
+        )
+        st.plotly_chart(fig_box_smoker, use_container_width=True)
 
+# --- Tab 2: Health Factors ---
+with tab_health:
+    st.subheader("L'influence de l'IMC et du Tabagisme")
+    
+    col_h1, col_h2 = st.columns([2, 1])
+    
+    with col_h1:
+        fig_scatter = px.scatter(
+            df_filtered, 
+            x="bmi", 
+            y="charges", 
+            color="smoker_label",
+            size="age",
+            hover_data=['age', 'children'],
+            title="Impact combiné de l'IMC et du Tabac",
+            labels={"bmi": "IMC (Indice de Masse Corporelle)", "charges": "Charges ($)"},
+            color_discrete_map={'Fumeur': '#ef4444', 'Non-fumeur': '#10b981'}
+        )
+        # Adding a reference line at BMI 30
+        fig_scatter.add_vline(x=30, line_dash="dash", line_color="gray", annotation_text="Seuil Obésité (30)")
+        st.plotly_chart(fig_scatter, use_container_width=True)
+        
+    with col_h2:
+        st.success("""
+        **Insight Clé : L'Effet Synergie**
+        - Chez les **non-fumeurs**, l'IMC a une influence linéaire modérée.
+        - Chez les **fumeurs**, on observe une rupture brutale au-delà d'un **IMC de 30**.
+        - Ce groupe (Fumeur + Obèse) représente le risque financier le plus élevé pour l'assureur.
+        """)
+        
+        # Pie chart for BMI categories
+        df_filtered['bmi_cat'] = pd.cut(df_filtered['bmi'], bins=[0, 18.5, 25, 30, 100], labels=['Insuffisant', 'Normal', 'Surpoids', 'Obèse'])
+        fig_pie = px.pie(df_filtered, names='bmi_cat', title="Répartition des catégories d'IMC", hole=0.4)
+        st.plotly_chart(fig_pie, use_container_width=True)
 
-# Charges vs BMI × fumeur
-st.header("Charges vs IMC (BMI) selon le tabagisme")
+# --- Tab 3: Demographics ---
+with tab_demo:
+    col_d1, col_d2 = st.columns(2)
+    
+    with col_d1:
+        st.subheader("Analyse par Âge & Dépendants")
+        fig_age = px.scatter(
+            df_filtered, 
+            x="age", 
+            y="charges", 
+            color="smoker_label",
+            trendline="ols",
+            title="Évolution des charges avec l'âge"
+        )
+        st.plotly_chart(fig_age, use_container_width=True)
+        
+    with col_d2:
+        st.subheader("Analyse Géographique & Genre")
+        
+        demo_option = st.selectbox("Comparer les charges moyennes par :", ["Région", "Sexe", "Nombre d'enfants"])
+        
+        target_col = "region" if demo_option == "Région" else ("sex" if demo_option == "Sexe" else "children")
+        
+        avg_charges = df_filtered.groupby(target_col)['charges'].mean().reset_index().sort_values('charges', ascending=False)
+        
+        fig_bar = px.bar(
+            avg_charges, 
+            x=target_col, 
+            y="charges", 
+            color="charges",
+            title=f"Charges moyennes par {demo_option}",
+            color_continuous_scale='Blues'
+        )
+        st.plotly_chart(fig_bar, use_container_width=True)
 
-fig, ax = plt.subplots()
-sns.scatterplot(
-    data=df_filtered,
-    x="bmi",
-    y="charges",
-    hue="smoker",
-    palette=PALETTE_SMOKER,
-    ax=ax,
-)
-ax.set_title("Charges vs BMI selon le statut fumeur")
-st.pyplot(fig)
+# ==========================================
+# Synthesis & Next Steps
+# ==========================================
+st.markdown("---")
+st.subheader("🎯 Synthèse & Hypothèses de Modélisation")
 
+expander = st.expander("Voir les conclusions de l'EDA", expanded=True)
+with expander:
+    c1, c2 = st.columns(2)
+    with c1:
+        st.markdown("""
+        **Facteurs Dominants :**
+        1. **Statut Fumeur** : Premier prédicteur de coût.
+        2. **IMC (BMI)** : Prédicteur multiplicateur chez les fumeurs.
+        3. **Âge** : Augmentation régulière et stratifiée des coûts.
+        """)
+    with c2:
+        st.markdown("""
+        **Risques identifiés pour la S2 :**
+        - **Déséquilibre** : Moins de fumeurs (20%) que de non-fumeurs.
+        - **Outliers** : Cas complexes (Maladies graves ?) générant des charges > 45k$.
+        - **Non-linéarité** : Interaction forte IMC x Smoker.
+        """)
 
-# Charges vs enfants × fumeur
-st.header(" Charges selon le nombre d’enfants et le tabagisme")
-
-fig, ax = plt.subplots()
-sns.boxplot(
-    data=df_filtered,
-    x="children",
-    y="charges",
-    hue="smoker",
-    palette=PALETTE_SMOKER,
-    ax=ax,
-)
-ax.set_title("Charges vs enfants selon le statut fumeur")
-st.pyplot(fig)
-
-
-children_smoker_mean = (
-    df_filtered
-    .groupby(["children", "smoker"])["charges"]
-    .mean()
-    .reset_index()
-)
-
-fig, ax = plt.subplots()
-sns.lineplot(
-    data=children_smoker_mean,
-    x="children",
-    y="charges",
-    hue="smoker",
-    palette=PALETTE_SMOKER,
-    marker="o",
-    ax=ax,
-)
-ax.set_title("Charges moyennes vs enfants selon le statut fumeur")
-st.pyplot(fig)
-
-
-# Analyse par région
-
-st.header("Analyse par région")
-
-region_counts = (
-    df_filtered
-    .groupby("region")
-    .size()
-    .reset_index(name="count")
-)
-
-region_charge_sum = (
-    df_filtered
-    .groupby("region")["charges"]
-    .sum()
-    .reset_index(name="total_charges")
-)
-
-region_charge_mean = (
-    df_filtered
-    .groupby("region")["charges"]
-    .mean()
-    .reset_index(name="mean_charges")
-)
-
-col1, col2, col3 = st.columns(3)
-
-with col1:
-    st.markdown("**Nombre d'assurés**")
-    st.dataframe(region_counts)
-
-with col2:
-    st.markdown("**Charges totales**")
-    st.dataframe(region_charge_sum)
-
-with col3:
-    st.markdown("**Charges moyennes**")
-    st.dataframe(region_charge_mean)
-
-
-fig, ax = plt.subplots()
-sns.barplot(
-    data=region_counts,
-    x="region",
-    y="count",
-    ax=ax,
-)
-ax.set_title("Nombre d'assurés par région")
-st.pyplot(fig)
-
-
-# Corrélations
-st.header(" Corrélations numériques")
-
-fig, ax = plt.subplots()
-sns.heatmap(
-    df_filtered[["age", "bmi", "children", "charges"]].corr(),
-    annot=True,
-    cmap="coolwarm",
-    ax=ax,
-)
-ax.set_title("Matrice de corrélation")
-st.pyplot(fig)
-
-
-# Conclusion métier
-
-st.header(" Synthèse")
-
-st.markdown(
-    """
-- Le **tabagisme** est le facteur le plus impactant sur les charges.
-- L’**IMC élevé chez les fumeurs** amplifie fortement les coûts.
-- Le nombre d’**enfants** a un effet secondaire.
-- Les **régions** sont globalement équilibrées.
-- Une transformation **log(charges)** est recommandée avant modélisation ML.
-"""
-)
+st.write("---")
+st.caption("Dashboard Analytics Insurance v2.0 - Equipe Dev Data IA")
