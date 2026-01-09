@@ -66,26 +66,95 @@ LOGO_URL = (
     "googlelogo/2x/googlelogo_color_92x30dp.png"
 )
 st.sidebar.image(LOGO_URL, width=150)
-st.sidebar.title("Configuration")
+st.sidebar.title("Filtres de Données")
 st.sidebar.markdown("---")
 
+# Filtre 1: Région
+st.sidebar.markdown("#### Région Géographique")
 region_list = ["Toutes"] + list(df['region'].unique())
-selected_region = st.sidebar.selectbox("Région Géographique", region_list)
+selected_region = st.sidebar.selectbox(
+    "Sélectionner une région",
+    region_list,
+    label_visibility="collapsed"
+)
 
+# Filtre 2: Tranche d'âge
+st.sidebar.markdown("#### Tranche d'Âge")
 age_range = st.sidebar.slider(
-    "Tranche d'âge",
+    "Âge",
     int(df['age'].min()),
     int(df['age'].max()),
-    (int(df['age'].min()), int(df['age'].max()))
+    (int(df['age'].min()), int(df['age'].max())),
+    label_visibility="collapsed"
 )
+
+# Filtre 3: Sexe (NOUVEAU)
+st.sidebar.markdown("#### Sexe")
+sex_options = ["Tous", "male", "female"]
+selected_sex = st.sidebar.radio(
+    "Sexe",
+    sex_options,
+    label_visibility="collapsed"
+)
+
+# Filtre 4: Statut Fumeur (NOUVEAU)
+st.sidebar.markdown("#### Statut Fumeur")
+smoker_options = ["Tous", "yes", "no"]
+selected_smoker = st.sidebar.radio(
+    "Fumeur",
+    smoker_options,
+    format_func=lambda x: "Tous" if x == "Tous" else ("Fumeur" if x == "yes" else "Non-fumeur"),
+    label_visibility="collapsed"
+)
+
+# Filtre 5: Plage IMC (NOUVEAU)
+st.sidebar.markdown("#### Indice de Masse Corporelle (IMC)")
+bmi_range = st.sidebar.slider(
+    "IMC",
+    float(df['bmi'].min()),
+    float(df['bmi'].max()),
+    (float(df['bmi'].min()), float(df['bmi'].max())),
+    step=0.5,
+    label_visibility="collapsed"
+)
+
+st.sidebar.markdown("---")
+st.sidebar.caption("Ajustez les filtres pour explorer les données")
 
 # Filtering logic
 df_filtered = df[
-    (df['age'] >= age_range[0]) & (df['age'] <= age_range[1])
+    (df['age'] >= age_range[0]) & (df['age'] <= age_range[1]) &
+    (df['bmi'] >= bmi_range[0]) & (df['bmi'] <= bmi_range[1])
 ]
+
 if selected_region != "Toutes":
     df_filtered = df_filtered[df_filtered['region'] == selected_region]
 
+if selected_sex != "Tous":
+    df_filtered = df_filtered[df_filtered['sex'] == selected_sex]
+
+if selected_smoker != "Tous":
+    df_filtered = df_filtered[df_filtered['smoker'] == selected_smoker]
+
+# Statistiques de filtrage
+st.sidebar.markdown("---")
+st.sidebar.markdown("#### Résultat du Filtrage")
+pct_filtered = (len(df_filtered) / len(df)) * 100
+st.sidebar.metric(
+    "Observations sélectionnées",
+    f"{len(df_filtered)} / {len(df)}",
+    delta=f"{pct_filtered:.1f}%"
+)
+
+# Bouton de téléchargement
+csv_data = df_filtered.to_csv(index=False).encode('utf-8')
+st.sidebar.download_button(
+    label="Télécharger les données (CSV)",
+    data=csv_data,
+    file_name=f"insurance_filtered_{len(df_filtered)}_rows.csv",
+    mime="text/csv",
+    use_container_width=True
+)
 
 # ==========================================
 # Header & Key Metrics
@@ -113,10 +182,11 @@ st.markdown("---")
 # ==========================================
 # Main Dashboard Tabs
 # ==========================================
-tab_dist, tab_health, tab_demo = st.tabs([
+tab_dist, tab_health, tab_demo, tab_corr = st.tabs([
     "Distribution des Coûts",
     "Facteurs de Santé",
-    "Démographie & Profils"
+    "Démographie & Profils",
+    "Corrélations & Stats"
 ])
 
 # --- Tab 1: Distribution ---
@@ -234,52 +304,362 @@ with tab_health:
 
 # --- Tab 3: Demographics ---
 with tab_demo:
-    col_d1, col_d2 = st.columns(2)
-
-    with col_d1:
-        st.subheader("Analyse par Âge & Dépendants")
-        fig_age = px.scatter(
+    st.subheader("Analyse Démographique Approfondie")
+    
+    # Section 1: Distribution par Région
+    st.markdown("#### Distribution des Charges par Région")
+    col_r1, col_r2 = st.columns([2, 1])
+    
+    with col_r1:
+        fig_region = px.box(
             df_filtered,
-            x="age",
+            x="region",
             y="charges",
             color="smoker_label",
-            trendline="ols",
-            title="Évolution des charges avec l'âge"
+            title="Charges par région et statut fumeur",
+            points="outliers",  # Afficher uniquement les outliers
+            color_discrete_map={
+                'Fumeur': '#ef4444',
+                'Non-fumeur': '#10b981'
+            }
         )
-        st.plotly_chart(fig_age, use_container_width=True)
-
-    with col_d2:
-        st.subheader("Analyse Géographique & Genre")
-
-        demo_option = st.selectbox(
-            "Comparer les charges moyennes par :",
-            ["Région", "Sexe", "Nombre d'enfants"]
+        fig_region.update_layout(
+            xaxis_title="Région",
+            yaxis_title="Charges ($)"
         )
-
-        if demo_option == "Région":
-            target_col = "region"
-        elif demo_option == "Sexe":
-            target_col = "sex"
-        else:
-            target_col = "children"
-
-        avg_charges = (
+        st.plotly_chart(fig_region, use_container_width=True)
+    
+    with col_r2:
+        st.info("""
+        **Lecture du Box Plot :**
+        - **Boîte** : 50% des données (Q1 à Q3)
+        - **Ligne médiane** : Valeur centrale
+        - **Moustaches** : Étendue normale
+        - **Points** : Valeurs extrêmes (outliers)
+        
+        **Insight :**
+        Les fumeurs ont des charges plus élevées dans **toutes** les régions.
+        """)
+        
+        # Statistiques par région
+        region_stats = df_filtered.groupby('region')['charges'].agg(['mean', 'median']).round(0)
+        st.markdown("**Moyennes par région :**")
+        for region, row in region_stats.iterrows():
+            st.metric(
+                label=region,
+                value=f"{row['mean']:,.0f} $",
+                delta=f"Médiane: {row['median']:,.0f} $"
+            )
+    
+    st.markdown("---")
+    
+    # Section 2: Comparaison Homme/Femme
+    st.markdown("#### Comparaison Homme vs Femme")
+    col_s1, col_s2 = st.columns([2, 1])
+    
+    with col_s1:
+        # Grouped bar chart
+        avg_by_sex_smoker = (
             df_filtered
-            .groupby(target_col)['charges']
+            .groupby(['sex', 'smoker_label'])['charges']
             .mean()
             .reset_index()
-            .sort_values('charges', ascending=False)
         )
-
-        fig_bar = px.bar(
-            avg_charges,
-            x=target_col,
+        
+        fig_sex = px.bar(
+            avg_by_sex_smoker,
+            x="sex",
             y="charges",
-            color="charges",
-            title=f"Charges moyennes par {demo_option}",
-            color_continuous_scale='Blues'
+            color="smoker_label",
+            barmode="group",
+            title="Charges moyennes par sexe et statut fumeur",
+            labels={"sex": "Sexe", "charges": "Charges moyennes ($)"},
+            color_discrete_map={
+                'Fumeur': '#ef4444',
+                'Non-fumeur': '#10b981'
+            }
         )
-        st.plotly_chart(fig_bar, use_container_width=True)
+        st.plotly_chart(fig_sex, use_container_width=True)
+    
+    with col_s2:
+        st.success("""
+        **Observation :**
+        - Peu de différence entre hommes et femmes
+        - Le **statut fumeur** est le facteur dominant
+        - L'écart fumeur/non-fumeur est similaire pour les deux sexes
+        """)
+        
+        # Calcul de l'écart
+        male_smoker = avg_by_sex_smoker[
+            (avg_by_sex_smoker['sex'] == 'male') & 
+            (avg_by_sex_smoker['smoker_label'] == 'Fumeur')
+        ]['charges'].values[0]
+        
+        male_nonsmoker = avg_by_sex_smoker[
+            (avg_by_sex_smoker['sex'] == 'male') & 
+            (avg_by_sex_smoker['smoker_label'] == 'Non-fumeur')
+        ]['charges'].values[0]
+        
+        st.metric(
+            "Écart Fumeur/Non-fumeur (Homme)",
+            f"+{(male_smoker - male_nonsmoker):,.0f} $",
+            delta=f"{((male_smoker/male_nonsmoker - 1) * 100):.0f}%"
+        )
+    
+    st.markdown("---")
+    
+    # Section 3: Impact du nombre d'enfants
+    st.markdown("#### Impact du Nombre d'Enfants")
+    col_c1, col_c2 = st.columns([2, 1])
+    
+    with col_c1:
+        fig_children = px.box(
+            df_filtered,
+            x="children",
+            y="charges",
+            color="smoker_label",
+            title="Distribution des charges selon le nombre d'enfants",
+            points="outliers",
+            color_discrete_map={
+                'Fumeur': '#ef4444',
+                'Non-fumeur': '#10b981'
+            }
+        )
+        fig_children.update_layout(
+            xaxis_title="Nombre d'enfants",
+            yaxis_title="Charges ($)"
+        )
+        st.plotly_chart(fig_children, use_container_width=True)
+    
+    with col_c2:
+        st.warning("""
+        **Tendance :**
+        - Impact **modéré** du nombre d'enfants
+        - Augmentation légère avec plus d'enfants
+        - Toujours dominé par le statut fumeur
+        
+        **Note :** La plupart des assurés ont 0-2 enfants.
+        """)
+        
+        # Distribution du nombre d'enfants
+        children_dist = df_filtered['children'].value_counts().sort_index()
+        st.markdown("**Répartition :**")
+        for n_children, count in children_dist.items():
+            pct = (count / len(df_filtered)) * 100
+            st.write(f"{n_children} enfant(s): {count} ({pct:.1f}%)")
+
+
+# --- Tab 4: Correlations & Stats ---
+with tab_corr:
+    st.subheader("Analyse des Corrélations et Statistiques Descriptives")
+    
+    col_c1, col_c2 = st.columns([2, 1])
+    
+    with col_c1:
+        # Heatmap de corrélation
+        st.markdown("#### Matrice de Corrélation (Pearson)")
+        corr_matrix = df_filtered[['age', 'bmi', 'children', 'charges']].corr()
+        
+        fig_heatmap = px.imshow(
+            corr_matrix,
+            text_auto='.2f',
+            color_continuous_scale='RdBu_r',
+            title="Corrélations entre variables numériques",
+            labels=dict(color="Coefficient"),
+            aspect="auto"
+        )
+        fig_heatmap.update_layout(
+            xaxis_title="",
+            yaxis_title="",
+            height=400
+        )
+        st.plotly_chart(fig_heatmap, use_container_width=True)
+    
+    with col_c2:
+        st.info("""
+        **Interprétation :**
+        - **Forte** : |r| > 0.7
+        - **Modérée** : 0.3 < |r| < 0.7
+        - **Faible** : |r| < 0.3
+        
+        **Limites :**
+        - Mesure uniquement les relations **linéaires**
+        - Ne capture pas les interactions complexes
+        - Variables catégorielles (`smoker`, `region`) exclues
+        """)
+        
+        # Afficher les corrélations avec charges
+        st.markdown("#### Corrélations avec `charges`")
+        corr_with_charges = corr_matrix['charges'].drop('charges').sort_values(ascending=False)
+        for var, corr_val in corr_with_charges.items():
+            st.metric(
+                label=var,
+                value=f"{corr_val:.3f}",
+                delta=None
+            )
+    
+    st.markdown("---")
+    
+    # Statistiques descriptives
+    col_s1, col_s2 = st.columns([1, 1])
+    
+    with col_s1:
+        st.markdown("#### Statistiques Descriptives")
+        stats_df = df_filtered[['age', 'bmi', 'children', 'charges']].describe().T
+        stats_df = stats_df.round(2)
+        st.dataframe(stats_df, use_container_width=True)
+    
+    with col_s2:
+        st.markdown("#### Détection des Valeurs Extrêmes")
+        
+        # Calcul des outliers (méthode IQR)
+        Q1 = df_filtered['charges'].quantile(0.25)
+        Q3 = df_filtered['charges'].quantile(0.75)
+        IQR = Q3 - Q1
+        lower_bound = Q1 - 1.5 * IQR
+        upper_bound = Q3 + 1.5 * IQR
+        
+        outliers = df_filtered[
+            (df_filtered['charges'] < lower_bound) | 
+            (df_filtered['charges'] > upper_bound)
+        ]
+        
+        col_o1, col_o2 = st.columns(2)
+        col_o1.metric("Outliers détectés", len(outliers))
+        col_o2.metric("% du dataset", f"{len(outliers)/len(df_filtered)*100:.1f}%")
+        
+        col_o3, col_o4 = st.columns(2)
+        col_o3.metric("Charge min", f"{df_filtered['charges'].min():,.0f} $")
+        col_o4.metric("Charge max", f"{df_filtered['charges'].max():,.0f} $")
+        
+        st.markdown(f"""
+        **Seuils IQR :**
+        - Limite inférieure : {lower_bound:,.0f} $
+        - Limite supérieure : {upper_bound:,.0f} $
+        """)
+    
+    # Affichage des outliers si présents
+    if len(outliers) > 0:
+        st.markdown("---")
+        st.markdown("#### Liste des Cas Extrêmes (Top 10)")
+        outliers_display = outliers[
+            ['age', 'sex', 'bmi', 'children', 'smoker', 'region', 'charges']
+        ].sort_values('charges', ascending=False).head(10)
+        st.dataframe(outliers_display, use_container_width=True)
+    
+    # Section Chi² pour variables catégorielles
+    st.markdown("---")
+    st.markdown("#### Test du Chi² (Variables Catégorielles)")
+    
+    st.info("""
+    **Pourquoi le Chi² ?**
+    - La corrélation de Pearson **ne fonctionne pas** avec les variables catégorielles
+    - Le test du Chi² mesure l'**indépendance** entre variables catégorielles
+    - Permet d'analyser `smoker`, `region`, et `sex` (exclus de la heatmap)
+    """)
+    
+    # Import scipy pour le test du Chi²
+    from scipy.stats import chi2_contingency
+    import numpy as np
+    
+    col_chi1, col_chi2 = st.columns([1, 1])
+    
+    with col_chi1:
+        st.markdown("##### Test 1 : Smoker × Charges (catégorisées)")
+        
+        # Catégoriser les charges en 3 groupes
+        df_filtered['charges_cat'] = pd.cut(
+            df_filtered['charges'],
+            bins=3,
+            labels=['Faible', 'Moyen', 'Élevé']
+        )
+        
+        # Table de contingence
+        contingency_smoker = pd.crosstab(
+            df_filtered['smoker'],
+            df_filtered['charges_cat']
+        )
+        
+        st.dataframe(contingency_smoker, use_container_width=True)
+        
+        # Test du Chi²
+        chi2_stat, p_value, dof, expected = chi2_contingency(contingency_smoker)
+        
+        st.metric("Chi² statistique", f"{chi2_stat:.2f}")
+        st.metric("p-value", f"{p_value:.2e}")
+        
+        if p_value < 0.001:
+            st.success("**Relation très significative** (p < 0.001)")
+        elif p_value < 0.05:
+            st.success("**Relation significative** (p < 0.05)")
+        else:
+            st.warning("Pas de relation significative (p ≥ 0.05)")
+    
+    with col_chi2:
+        st.markdown("##### Test 2 : Region × Smoker")
+        
+        # Table de contingence
+        contingency_region = pd.crosstab(
+            df_filtered['region'],
+            df_filtered['smoker']
+        )
+        
+        st.dataframe(contingency_region, use_container_width=True)
+        
+        # Test du Chi²
+        chi2_stat2, p_value2, dof2, expected2 = chi2_contingency(contingency_region)
+        
+        st.metric("Chi² statistique", f"{chi2_stat2:.2f}")
+        st.metric("p-value", f"{p_value2:.2e}")
+        
+        if p_value2 < 0.001:
+            st.success("**Relation très significative** (p < 0.001)")
+        elif p_value2 < 0.05:
+            st.success("**Relation significative** (p < 0.05)")
+        else:
+            st.warning("Pas de relation significative (p ≥ 0.05)")
+    
+    # Test supplémentaire : Sex × Charges
+    st.markdown("---")
+    col_chi3, col_chi4 = st.columns([1, 1])
+    
+    with col_chi3:
+        st.markdown("##### Test 3 : Sex × Charges (catégorisées)")
+        
+        contingency_sex = pd.crosstab(
+            df_filtered['sex'],
+            df_filtered['charges_cat']
+        )
+        
+        st.dataframe(contingency_sex, use_container_width=True)
+        
+        chi2_stat3, p_value3, dof3, expected3 = chi2_contingency(contingency_sex)
+        
+        st.metric("Chi² statistique", f"{chi2_stat3:.2f}")
+        st.metric("p-value", f"{p_value3:.2e}")
+        
+        if p_value3 < 0.001:
+            st.success("**Relation très significative** (p < 0.001)")
+        elif p_value3 < 0.05:
+            st.success("**Relation significative** (p < 0.05)")
+        else:
+            st.warning("Pas de relation significative (p ≥ 0.05)")
+    
+    with col_chi4:
+        st.markdown("##### Interprétation du Chi²")
+        st.markdown("""
+        **Hypothèse nulle (H₀)** : Les variables sont indépendantes
+        
+        **Règle de décision** :
+        - Si **p < 0.05** : On rejette H₀ → Les variables sont **dépendantes**
+        - Si **p ≥ 0.05** : On ne rejette pas H₀ → Pas de preuve de dépendance
+        
+        **Attendu** :
+        - `smoker` × `charges` : **Forte dépendance** (facteur dominant)
+        - `region` × `smoker` : Probablement **indépendant**
+        - `sex` × `charges` : Probablement **indépendant**
+        """)
+
 
 
 # ==========================================
