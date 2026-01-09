@@ -23,14 +23,31 @@ st.markdown("""
     .main {
         background-color: #f8f9fa;
     }
-    .stMetric {
+    /* Style pour les cartes de métriques */
+    [data-testid="metric-container"] {
         background-color: #ffffff;
-        padding: 15px;
-        border-radius: 10px;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        padding: 20px;
+        border-radius: 12px;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        border: 1px solid #e5e7eb;
     }
+    /* Forcer la couleur du texte des métriques pour la lisibilité */
+    [data-testid="stMetricLabel"] {
+        color: #374151 !important; /* Gris foncé pour le label */
+        font-size: 1rem !important;
+        font-weight: 600 !important;
+    }
+    [data-testid="stMetricValue"] {
+        color: #111827 !important; /* Presque noir pour la valeur */
+        font-size: 1.8rem !important;
+    }
+    /* Amélioration des titres */
     h1, h2, h3 {
-        color: #1e3a8a;
+        color: #1e3a8a !important;
+    }
+    /* Style pour les boites d'info si nécessaire */
+    .stAlert {
+        border-radius: 10px;
     }
     </style>
 """, unsafe_allow_html=True)
