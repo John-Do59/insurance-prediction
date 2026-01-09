@@ -1110,5 +1110,49 @@ with tab_expert:
         - Chez les fumeurs, le risque de charges élevées est plus 'systématique'.
         """)
 
+    st.markdown("---")
+
+    # D. Visualisation des "Chocs"
+    st.markdown("#### ⚡ Visualisation des Écarts Majeurs (Effets Chocs)")
+    col_ch1, col_ch2 = st.columns(2)
+    
+    with col_ch1:
+        # Duel Jeune Fumeur vs Senior Non-Fumeur
+        df_filtered['profile_group'] = 'Autres'
+        df_filtered.loc[(df_filtered['age'] <= 35) & (df_filtered['smoker'] == 'yes'), 'profile_group'] = 'Jeune Fumeur (<=35)'
+        df_filtered.loc[(df_filtered['age'] >= 51) & (df_filtered['smoker'] == 'no'), 'profile_group'] = 'Senior Non-Fumeur (>=51)'
+        
+        duel_df = df_filtered[df_filtered['profile_group'] != 'Autres'].groupby('profile_group')['charges'].mean().reset_index()
+        
+        fig_duel = px.bar(
+            duel_df, x='profile_group', y='charges',
+            title="Le Duel : Style de Vie vs Vieillissement",
+            labels={'charges': 'Charges Moyennes ($)', 'profile_group': 'Profil'},
+            color='profile_group',
+            color_discrete_map={'Jeune Fumeur (<=35)': '#ef4444', 'Senior Non-Fumeur (>=51)': '#3b82f6'}
+        )
+        st.plotly_chart(fig_duel, use_container_width=True)
+        st.caption("Un jeune fumeur coûte ~2x plus cher qu'un senior qui ne fume pas.")
+
+    with col_ch2:
+        # Matrice 4-blocs IMC x Tabac
+        df_filtered['imc_tabac_group'] = df_filtered['smoker_label'] + " + " + df_filtered['bmi_cat'].astype(str)
+        # On ne veut que les 4 groupes principaux (basé sur le seuil 30)
+        df_filtered['bmi_simple'] = df_filtered['bmi'] >= 30
+        df_filtered['bmi_simple_label'] = df_filtered['bmi_simple'].map({True: 'IMC >= 30', False: 'IMC < 30'})
+        
+        matrix_df = df_filtered.groupby(['smoker_label', 'bmi_simple_label'])['charges'].mean().reset_index()
+        matrix_df['Groupe'] = matrix_df['smoker_label'] + " (" + matrix_df['bmi_simple_label'] + ")"
+        
+        fig_matrix = px.bar(
+            matrix_df, x='Groupe', y='charges',
+            title="L'Effet Combo (Tabac + Obésité)",
+            labels={'charges': 'Charges Moyennes ($)'},
+            color='smoker_label',
+            color_discrete_map={'Fumeur': '#ef4444', 'Non-fumeur': '#10b981'}
+        )
+        st.plotly_chart(fig_matrix, use_container_width=True)
+        st.caption("L'obésité multiplie par ~5 le coût pour un fumeur (Risque de 41k$).")
+
 st.write("---")
 st.caption("Dashboard Analytics Insurance v2.1 - Equipe Dev Data IA")
