@@ -582,17 +582,78 @@ with tab_corr:
     from scipy.stats import chi2_contingency
     import numpy as np
     
+    # Section Matrice de Corrélation Catégorielle (V de Cramér)
+    st.markdown("#### Matrice de Corrélation Catégorielle (V de Cramér)")
+    
+    # Fonction pour calculer le V de Cramér
+    def calculate_cramers_v(x, y):
+        confusion_matrix = pd.crosstab(x, y)
+        chi2 = chi2_contingency(confusion_matrix)[0]
+        n = confusion_matrix.sum().sum()
+        phi2 = chi2 / n
+        r, k = confusion_matrix.shape
+        phi2corr = max(0, phi2 - ((k-1)*(r-1))/(n-1))
+        rcorr = r - ((r-1)**2)/(n-1)
+        kcorr = k - ((k-1)**2)/(n-1)
+        return np.sqrt(phi2corr / min((kcorr-1), (rcorr-1)))
+
+    # Préparer les données pour la matrice
+    cat_vars = ['sex', 'smoker', 'region']
+    # On ajoute la version catégorisée des charges
+    df_filtered['charges_cat'] = pd.cut(
+        df_filtered['charges'],
+        bins=3,
+        labels=['Faible', 'Moyen', 'Elevé']
+    )
+    cols_to_compare = cat_vars + ['charges_cat']
+    
+    # Calculer la matrice
+    cramers_matrix = pd.DataFrame(
+        np.zeros((len(cols_to_compare), len(cols_to_compare))),
+        columns=cols_to_compare,
+        index=cols_to_compare
+    )
+    
+    for col1 in cols_to_compare:
+        for col2 in cols_to_compare:
+            if col1 == col2:
+                cramers_matrix.loc[col1, col2] = 1.0
+            else:
+                cramers_matrix.loc[col1, col2] = calculate_cramers_v(df_filtered[col1], df_filtered[col2])
+    
+    col_cm1, col_cm2 = st.columns([2, 1])
+    
+    with col_cm1:
+        fig_cramers = px.imshow(
+            cramers_matrix,
+            text_auto='.2f',
+            color_continuous_scale='Purples',
+            title="Intensité de l'association (V de Cramér)",
+            labels=dict(color="Association"),
+            aspect="auto"
+        )
+        fig_cramers.update_layout(height=450)
+        st.plotly_chart(fig_cramers, use_container_width=True)
+    
+    with col_cm2:
+        st.info("""
+        **V de Cramér :**
+        - **0** : Indépendance totale
+        - **1** : Association parfaite
+        - Contrairement à Pearson, il n'y a pas de direction (+/-).
+        
+        **Observations :**
+        - Le **smoker** a la plus forte association avec les **charges**.
+        - La **region** et le **sex** ont une influence beaucoup plus faible.
+        """)
+
+    st.markdown("---")
+    st.markdown("#### Tests de Dépendance Individuels")
+    
     col_chi1, col_chi2 = st.columns([1, 1])
     
     with col_chi1:
-        st.markdown("##### Test 1 : Smoker × Charges (catégorisées)")
-        
-        # Catégoriser les charges en 3 groupes
-        df_filtered['charges_cat'] = pd.cut(
-            df_filtered['charges'],
-            bins=3,
-            labels=['Faible', 'Moyen', 'Élevé']
-        )
+        st.markdown("##### Test 1 : Smoker × Charges")
         
         # Table de contingence
         contingency_smoker = pd.crosstab(
