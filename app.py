@@ -263,6 +263,20 @@ with tab_dist:
         )
         st.plotly_chart(fig_box_smoker, use_container_width=True)
 
+        st.markdown("---")
+        st.markdown("#### Répartition des Variables Catégorielles")
+        
+        col_cat1, col_cat2 = st.columns(2)
+        
+        with col_cat1:
+            fig_sex_dist = px.pie(df_filtered, names='sex', title="Répartition par Sexe", hole=0.3)
+            st.plotly_chart(fig_sex_dist, use_container_width=True)
+            
+        with col_cat2:
+            fig_region_dist = px.pie(df_filtered, names='region', title="Répartition par Région", hole=0.3)
+            st.plotly_chart(fig_region_dist, use_container_width=True)
+
+
 # --- Tab 2: Health Factors ---
 with tab_health:
     st.subheader("L'influence de l'IMC et du Tabagisme")
@@ -761,12 +775,11 @@ with expander:
         """)
     with c2:
         st.markdown("""
-        **Risques identifiés pour la S2 :**
-        - **Déséquilibre** : Moins de fumeurs (20%)
-          que de non-fumeurs.
-        - **Outliers** : Cas complexes (Maladies graves ?)
-          générant des charges > 45k$.
-        - **Non-linéarité** : Interaction forte IMC x Smoker.
+        **Analyse des Risques (S2) :**
+        - **Déséquilibre** : Moins de fumeurs (~20%), ce qui peut biaiser l'apprentissage si non traité.
+        - **Outliers** : Présence de charges > 45k$ (souvent fumeurs avec IMC élevé) identifiés par la méthode IQR.
+        - **Non-linéarité** : L'interaction IMC x Smoker est l'élément le plus critique pour la précision du futur modèle.
+        - **Multicolinéarité** : Vérifiée via Matrice de Pearson (faible entre variables prédictives).
         """)
 
 st.write("---")
