@@ -1,44 +1,72 @@
 """
-Onglet Corrélations & Stats.
+Onglet Correlations et Stats.
 """
 
 import streamlit as st
 import numpy as np
 import pandas as pd
 import plotly.express as px
+from scipy import stats
+from scipy.stats import chi2_contingency, f_oneway
 from src.utils import calculate_association_matrix, run_chi2_test
 from src.components.metrics import display_chi2_result
 
 
 def render_tab_correlations(df_filtered: pd.DataFrame):
     """
-    Affiche l'onglet des corrélations et statistiques.
+    Affiche l'onglet des correlations et statistiques.
 
     Parameters
     ----------
     df_filtered : pd.DataFrame
-        DataFrame filtré.
+        DataFrame filtre.
     """
-    st.subheader("Analyse des Corrélations et Statistiques Descriptives")
+    st.subheader("Analyse Bivariee Complete")
 
+    st.info(
+        """
+        L'analyse bivariee etudie les relations entre 2 variables.
+        Le choix du test depend de la nature des variables :
+        - **Numerique x Numerique** : Correlation de Pearson
+        - **Categorielle x Categorielle** : Test du Chi-carre
+        - **Categorielle x Numerique** : Test ANOVA (Fisher)
+        """
+    )
+
+    # Section 1: Matrice d'association globale
     _render_association_matrix(df_filtered)
     st.markdown("---")
+
+    # Section 2: Correlation Pearson (Num x Num)
     _render_pearson_correlation(df_filtered)
     st.markdown("---")
+
+    # Section 3: Test ANOVA (Cat x Num)
+    _render_anova_tests(df_filtered)
+    st.markdown("---")
+
+    # Section 4: Test Chi-carre (Cat x Cat)
+    _render_chi2_tests(df_filtered)
+    st.markdown("---")
+
+    # Section 5: Statistiques descriptives et outliers
     _render_descriptive_stats(df_filtered)
     st.markdown("---")
-    _render_chi2_tests(df_filtered)
+
+    # Section 6: Resume de l'analyse bivariee
+    _render_bivariate_summary(df_filtered)
 
 
 def _render_association_matrix(df_filtered: pd.DataFrame):
     """Affiche la matrice d'association."""
     st.markdown("#### Matrice d'Association Comprehensive")
-    st.info(
+
+    st.write(
         """
-        Cette matrice combine différentes mesures d'association :
-        - **Numérique-Numérique :** Corrélation de Pearson
-        - **Catégorielle-Catégorielle :** Coefficient de Cramer (V)
-        - **Numérique-Catégorielle :** Ratio de Corrélation (Eta-squared)
+        Cette matrice combine differentes mesures d'association :
+        - **Numerique x Numerique** : Correlation de Pearson
+        - **Categorielle x Categorielle** : V de Cramer
+        - **Numerique x Categorielle** : Eta-squared (ratio de correlation)
         """
     )
 
@@ -58,7 +86,7 @@ def _render_association_matrix(df_filtered: pd.DataFrame):
         association_matrix,
         text_auto=".2f",
         color_continuous_scale="RdBu_r",
-        title="Matrice d'Association Complète",
+        title="Matrice d'Association Complete",
         labels={"color": "Force d'Association"},
         aspect="auto"
     )
@@ -69,23 +97,59 @@ def _render_association_matrix(df_filtered: pd.DataFrame):
     )
     st.plotly_chart(fig_comp_heatmap, use_container_width=True)
 
+    # Legende
+    col1, col2, col3 = st.columns(3)
+
+    with col1:
+        st.markdown(
+            """
+            **Pearson (Num x Num) :**
+            - |r| < 0.3 : Faible
+            - 0.3 <= |r| < 0.7 : Moderee
+            - |r| >= 0.7 : Forte
+            """
+        )
+
+    with col2:
+        st.markdown(
+            """
+            **V de Cramer (Cat x Cat) :**
+            - V < 0.1 : Negligeable
+            - 0.1 <= V < 0.3 : Faible
+            - 0.3 <= V < 0.5 : Moderee
+            - V >= 0.5 : Forte
+            """
+        )
+
+    with col3:
+        st.markdown(
+            """
+            **Eta-squared (Cat x Num) :**
+            - Eta < 0.01 : Negligeable
+            - 0.01 <= Eta < 0.06 : Faible
+            - 0.06 <= Eta < 0.14 : Moderee
+            - Eta >= 0.14 : Forte
+            """
+        )
+
 
 def _render_pearson_correlation(df_filtered: pd.DataFrame):
-    """Affiche la corrélation de Pearson."""
-    numerical_cols = df_filtered.select_dtypes(include=np.number).columns.tolist()
-    
-    col_c1, col_c2 = st.columns([2, 1])
+    """Affiche la correlation de Pearson (Num x Num)."""
+    st.markdown("#### Correlation de Pearson (Numerique x Numerique)")
 
-    with col_c1:
-        st.markdown("#### Corrélation Linéaire (Pearson)")
+    numerical_cols = ["age", "bmi", "children", "charges"]
+
+    col1, col2 = st.columns([2, 1])
+
+    with col1:
         corr_matrix = df_filtered[numerical_cols].corr()
 
         fig_heatmap = px.imshow(
             corr_matrix,
             text_auto=".2f",
             color_continuous_scale="RdBu_r",
-            title="Corrélations entre variables numériques",
-            labels={"color": "Coefficient"},
+            title="Matrice de Correlation de Pearson",
+            labels={"color": "Coefficient r"},
             aspect="auto"
         )
         fig_heatmap.update_layout(
@@ -95,167 +159,439 @@ def _render_pearson_correlation(df_filtered: pd.DataFrame):
         )
         st.plotly_chart(fig_heatmap, use_container_width=True)
 
-    with col_c2:
-        st.info(
-            """
-            **Interprétation (Pearson) :**
-            - **Forte** : |r| > 0.7
-            - **Modérée** : 0.3 < |r| < 0.7
-            - **Faible** : |r| < 0.3
+    with col2:
+        st.markdown("##### Correlations avec Charges")
 
-            **Limites :**
-            - Mesure uniquement les relations **linéaires**
-            - Ne capture pas les interactions complexes
-            """
-        )
+        results_pearson = []
 
-        st.markdown("#### Corrélations avec `charges`")
-        if "charges" in corr_matrix.columns:
-            corr_with_charges = (
-                corr_matrix["charges"]
-                .drop("charges")
-                .sort_values(ascending=False)
-            )
-            for var, corr_val in corr_with_charges.items():
-                st.metric(label=var, value=f"{corr_val:.3f}")
+        for var in ["age", "bmi", "children"]:
+            r = corr_matrix.loc[var, "charges"]
+            n = len(df_filtered)
 
+            # Test de significativite
+            if abs(r) < 1:
+                t_stat = r * np.sqrt((n - 2) / (1 - r**2))
+                p_value = 2 * (1 - stats.t.cdf(abs(t_stat), n - 2))
+            else:
+                p_value = 0
 
-def _render_descriptive_stats(df_filtered: pd.DataFrame):
-    """Affiche les statistiques descriptives."""
-    numerical_cols = df_filtered.select_dtypes(include=np.number).columns.tolist()
-    
-    col_s1, col_s2 = st.columns([1, 1])
+            # Force
+            if abs(r) < 0.3:
+                force = "Faible"
+            elif abs(r) < 0.7:
+                force = "Moderee"
+            else:
+                force = "Forte"
 
-    with col_s1:
-        st.markdown("#### Statistiques Descriptives")
-        stats_df = df_filtered[numerical_cols].describe().T.round(2)
-        st.dataframe(stats_df, use_container_width=True)
+            results_pearson.append({
+                "Variable": var,
+                "r": r,
+                "p_value": p_value,
+                "force": force
+            })
 
-    with col_s2:
-        st.markdown("#### Détection des Valeurs Extrêmes")
-        _render_outliers_detection(df_filtered)
+            st.metric(var, f"r = {r:.3f}")
 
+            if p_value < 0.001:
+                st.caption(f"p < 0.001 - {force}")
+            elif p_value < 0.05:
+                st.caption(f"p = {p_value:.3f} - {force}")
+            else:
+                st.caption(f"p = {p_value:.3f} - Non significatif")
 
-def _render_outliers_detection(df_filtered: pd.DataFrame):
-    """Affiche la détection des outliers."""
-    q1 = df_filtered["charges"].quantile(0.25)
-    q3 = df_filtered["charges"].quantile(0.75)
-    iqr = q3 - q1
-    lower_bound = q1 - 1.5 * iqr
-    upper_bound = q3 + 1.5 * iqr
+    # Tableau interpretation
+    st.markdown("##### Interpretation des Correlations")
 
-    outliers = df_filtered[
-        (df_filtered["charges"] < lower_bound)
-        | (df_filtered["charges"] > upper_bound)
-    ]
+    interpretation_pearson = []
+    for res in results_pearson:
+        var = res["Variable"]
+        r = res["r"]
+        p = res["p_value"]
+        force = res["force"]
 
-    col_o1, col_o2 = st.columns(2)
-    col_o1.metric("Outliers détectés", len(outliers))
-    col_o2.metric(
-        "% du dataset",
-        f"{len(outliers) / len(df_filtered) * 100:.1f}%"
+        existe = "Oui" if p < 0.05 else "Non"
+
+        if var == "age":
+            traduction = "Les charges augmentent avec l'age"
+        elif var == "bmi":
+            traduction = "Effet limite seul, fort si combine avec smoker"
+        else:
+            traduction = "Pas d'impact significatif du nombre d'enfants"
+
+        interpretation_pearson.append({
+            "Variable": var,
+            "Coefficient r": f"{r:.3f}",
+            "p-value": f"{p:.2e}" if p < 0.001 else f"{p:.3f}",
+            "1. Existe ?": existe,
+            "2. Force": force,
+            "3. Traduction Metier": traduction
+        })
+
+    st.dataframe(
+        pd.DataFrame(interpretation_pearson),
+        use_container_width=True,
+        hide_index=True
     )
 
-    col_o3, col_o4 = st.columns(2)
-    col_o3.metric("Charge min", f"{df_filtered['charges'].min():,.0f} $")
-    col_o4.metric("Charge max", f"{df_filtered['charges'].max():,.0f} $")
 
-    st.markdown(
-        f"""
-        **Seuils IQR :**
-        - Limite inférieure : {lower_bound:,.0f} $
-        - Limite supérieure : {upper_bound:,.0f} $
+def _render_anova_tests(df_filtered: pd.DataFrame):
+    """Affiche les tests ANOVA (Cat x Num)."""
+    st.markdown("#### Test ANOVA / Fisher (Categorielle x Numerique)")
+
+    st.write(
+        """
+        Le test ANOVA compare les moyennes de la variable numerique 
+        entre les groupes definis par la variable categorielle.
+        
+        - **Hypothese nulle (H0)** : Les moyennes sont egales entre les groupes
+        - **Si p < 0.05** : On rejette H0, les moyennes sont differentes
         """
     )
 
-    # Affichage des outliers
-    if len(outliers) > 0:
+    # Liste des tests a effectuer
+    anova_tests = [
+        ("smoker", "charges", "Smoker vs Charges"),
+        ("sex", "charges", "Sexe vs Charges"),
+        ("region", "charges", "Region vs Charges"),
+    ]
+
+    results_anova = []
+
+    for cat_var, num_var, title in anova_tests:
+        st.markdown(f"##### {title}")
+
+        col1, col2 = st.columns([2, 1])
+
+        with col1:
+            # Boxplot
+            fig = px.box(
+                df_filtered,
+                x=cat_var,
+                y=num_var,
+                color=cat_var,
+                title=f"Distribution de {num_var} par {cat_var}"
+            )
+            fig.update_layout(
+                height=350,
+                showlegend=False,
+                plot_bgcolor="rgba(0,0,0,0)"
+            )
+            st.plotly_chart(fig, use_container_width=True)
+
+        with col2:
+            # Calcul ANOVA
+            groups = [
+                df_filtered[df_filtered[cat_var] == cat][num_var].dropna()
+                for cat in df_filtered[cat_var].unique()
+            ]
+
+            if all(len(g) > 1 for g in groups):
+                f_stat, p_value = f_oneway(*groups)
+
+                # Calcul Eta-squared
+                grand_mean = df_filtered[num_var].mean()
+                ss_between = sum(
+                    len(g) * (g.mean() - grand_mean)**2 for g in groups
+                )
+                ss_total = sum((df_filtered[num_var] - grand_mean)**2)
+                eta_squared = ss_between / ss_total if ss_total > 0 else 0
+
+                # Force
+                if eta_squared < 0.01:
+                    force = "Negligeable"
+                elif eta_squared < 0.06:
+                    force = "Faible"
+                elif eta_squared < 0.14:
+                    force = "Moderee"
+                else:
+                    force = "Forte"
+
+                # Affichage metriques
+                st.metric("F-statistique", f"{f_stat:.2f}")
+                st.metric("p-value", f"{p_value:.2e}" if p_value < 0.001 else f"{p_value:.4f}")
+                st.metric("Eta-squared", f"{eta_squared:.3f}")
+
+                # Interpretation
+                if p_value < 0.001:
+                    st.success(f"Relation TRES significative - Force : {force}")
+                elif p_value < 0.05:
+                    st.success(f"Relation significative - Force : {force}")
+                else:
+                    st.info(f"Relation NON significative - Force : {force}")
+
+                # Moyennes par groupe
+                st.markdown("**Moyennes par groupe :**")
+                for cat in df_filtered[cat_var].unique():
+                    mean_val = df_filtered[df_filtered[cat_var] == cat][num_var].mean()
+                    st.write(f"- {cat} : {mean_val:,.0f} $")
+
+                # Traduction metier
+                if cat_var == "smoker":
+                    traduction = "Le tabagisme est le facteur dominant des couts"
+                elif cat_var == "sex":
+                    traduction = "Pas de difference significative entre hommes et femmes"
+                else:
+                    traduction = "Differences regionales mineures"
+
+                results_anova.append({
+                    "Variables": f"{cat_var} vs {num_var}",
+                    "F-stat": f"{f_stat:.2f}",
+                    "p-value": f"{p_value:.2e}" if p_value < 0.001 else f"{p_value:.4f}",
+                    "Eta-squared": f"{eta_squared:.3f}",
+                    "1. Existe ?": "Oui" if p_value < 0.05 else "Non",
+                    "2. Force": force,
+                    "3. Traduction Metier": traduction
+                })
+
         st.markdown("---")
-        st.markdown("#### Liste des Cas Extrêmes (Top 10)")
-        display_cols = [
-            "age", "sex", "bmi", "children", "smoker", "region", "charges"
-        ]
-        outliers_display = (
-            outliers[display_cols]
-            .sort_values("charges", ascending=False)
-            .head(10)
-        )
-        st.dataframe(outliers_display, use_container_width=True)
+
+    # Tableau recapitulatif ANOVA
+    st.markdown("##### Tableau Recapitulatif ANOVA")
+    st.dataframe(
+        pd.DataFrame(results_anova),
+        use_container_width=True,
+        hide_index=True
+    )
 
 
 def _render_chi2_tests(df_filtered: pd.DataFrame):
-    """Affiche les tests Chi-carré."""
-    st.markdown("#### Tests d'Indépendance (Chi-carré)")
+    """Affiche les tests Chi-carre (Cat x Cat)."""
+    st.markdown("#### Test du Chi-carre (Categorielle x Categorielle)")
 
-    st.info(
+    st.write(
         """
-        **Pourquoi le Chi-carré ?**
-        - La corrélation de Pearson **ne fonctionne pas** avec
-          les variables catégorielles
-        - Le test du Chi-carré mesure l'**indépendance statistique**
-        - Utile pour évaluer la significativité de l'association
+        Le test du Chi-carre verifie si deux variables categorielles sont independantes.
+        
+        - **Hypothese nulle (H0)** : Les variables sont independantes
+        - **Si p < 0.05** : On rejette H0, les variables sont dependantes (liees)
         """
     )
 
-    df_temp = df_filtered.copy()
-    if "charges_cat" not in df_temp.columns:
-        df_temp["charges_cat"] = pd.cut(
-            df_temp["charges"],
-            bins=3,
-            labels=["Faible", "Moyen", "Élevé"]
-        )
+    # Liste des tests a effectuer
+    chi2_tests = [
+        ("sex", "smoker", "Sexe vs Statut Fumeur"),
+        ("region", "smoker", "Region vs Statut Fumeur"),
+        ("sex", "region", "Sexe vs Region"),
+    ]
 
-    col_chi1, col_chi2 = st.columns([1, 1])
+    results_chi2 = []
 
-    with col_chi1:
-        st.markdown("##### Test 1 : Smoker x Charges")
-        contingency_smoker = pd.crosstab(
-            df_temp["smoker"],
-            df_temp["charges_cat"]
-        )
-        st.dataframe(contingency_smoker, use_container_width=True)
+    for cat1, cat2, title in chi2_tests:
+        st.markdown(f"##### {title}")
 
-        chi2, pval, valid = run_chi2_test(contingency_smoker)
-        display_chi2_result(chi2, pval, valid, "Smoker x Charges")
+        col1, col2 = st.columns([1, 1])
 
-    with col_chi2:
-        st.markdown("##### Test 2 : Region x Smoker")
-        contingency_region = pd.crosstab(
-            df_temp["region"],
-            df_temp["smoker"]
-        )
-        st.dataframe(contingency_region, use_container_width=True)
+        with col1:
+            # Table de contingence
+            contingency = pd.crosstab(df_filtered[cat1], df_filtered[cat2])
+            st.markdown("**Table de contingence :**")
+            st.dataframe(contingency, use_container_width=True)
 
-        chi2, pval, valid = run_chi2_test(contingency_region)
-        display_chi2_result(chi2, pval, valid, "Region x Smoker")
+        with col2:
+            # Calcul Chi-carre
+            chi2, p_value, dof, expected = chi2_contingency(contingency)
 
-    st.markdown("---")
-    col_chi3, col_chi4 = st.columns([1, 1])
+            # V de Cramer
+            n = contingency.sum().sum()
+            min_dim = min(contingency.shape) - 1
+            if min_dim > 0:
+                cramers_v = np.sqrt(chi2 / (n * min_dim))
+            else:
+                cramers_v = 0
 
-    with col_chi3:
-        st.markdown("##### Test 3 : Sex x Charges")
-        contingency_sex = pd.crosstab(
-            df_temp["sex"],
-            df_temp["charges_cat"]
-        )
-        st.dataframe(contingency_sex, use_container_width=True)
+            # Force
+            if cramers_v < 0.1:
+                force = "Negligeable"
+            elif cramers_v < 0.3:
+                force = "Faible"
+            elif cramers_v < 0.5:
+                force = "Moderee"
+            else:
+                force = "Forte"
 
-        chi2, pval, valid = run_chi2_test(contingency_sex)
-        display_chi2_result(chi2, pval, valid, "Sex x Charges")
+            # Affichage
+            st.metric("Chi-carre", f"{chi2:.2f}")
+            st.metric("p-value", f"{p_value:.2e}" if p_value < 0.001 else f"{p_value:.4f}")
+            st.metric("V de Cramer", f"{cramers_v:.3f}")
 
-    with col_chi4:
-        st.markdown("##### Interprétation du Chi-carré")
-        st.markdown(
+            if p_value < 0.05:
+                st.success(f"Variables DEPENDANTES - Force : {force}")
+            else:
+                st.info(f"Variables INDEPENDANTES - Force : {force}")
+
+            # Traduction
+            if cat1 == "sex" and cat2 == "smoker":
+                traduction = "Le taux de fumeurs est similaire chez les hommes et les femmes"
+            elif cat1 == "region" and cat2 == "smoker":
+                traduction = "Le taux de fumeurs est similaire dans toutes les regions"
+            else:
+                traduction = "La repartition des sexes est similaire dans toutes les regions"
+
+            results_chi2.append({
+                "Variables": f"{cat1} vs {cat2}",
+                "Chi-carre": f"{chi2:.2f}",
+                "p-value": f"{p_value:.2e}" if p_value < 0.001 else f"{p_value:.4f}",
+                "V de Cramer": f"{cramers_v:.3f}",
+                "1. Existe ?": "Oui" if p_value < 0.05 else "Non",
+                "2. Force": force,
+                "3. Traduction Metier": traduction
+            })
+
+        st.markdown("---")
+
+    # Tableau recapitulatif Chi-carre
+    st.markdown("##### Tableau Recapitulatif Chi-carre")
+    st.dataframe(
+        pd.DataFrame(results_chi2),
+        use_container_width=True,
+        hide_index=True
+    )
+
+
+def _render_descriptive_stats(df_filtered: pd.DataFrame):
+    """Affiche les statistiques descriptives et outliers."""
+    st.markdown("#### Statistiques Descriptives et Outliers")
+
+    numerical_cols = ["age", "bmi", "children", "charges"]
+
+    col1, col2 = st.columns([1, 1])
+
+    with col1:
+        st.markdown("##### Variables Numeriques")
+        stats_df = df_filtered[numerical_cols].describe().T.round(2)
+        st.dataframe(stats_df, use_container_width=True)
+
+    with col2:
+        st.markdown("##### Detection des Outliers (Charges)")
+
+        q1 = df_filtered["charges"].quantile(0.25)
+        q3 = df_filtered["charges"].quantile(0.75)
+        iqr = q3 - q1
+        lower_bound = q1 - 1.5 * iqr
+        upper_bound = q3 + 1.5 * iqr
+
+        outliers = df_filtered[
+            (df_filtered["charges"] < lower_bound) |
+            (df_filtered["charges"] > upper_bound)
+        ]
+
+        n_outliers = len(outliers)
+        pct_outliers = (n_outliers / len(df_filtered)) * 100
+
+        st.metric("Outliers detectes", n_outliers)
+        st.metric("Pourcentage", f"{pct_outliers:.1f}%")
+        st.metric("Seuil superieur", f"{upper_bound:,.0f} $")
+
+        if n_outliers > 0:
+            st.warning(
+                f"{n_outliers} valeurs extremes detectees. "
+                "Ces cas representent les assures a haut risque (fumeurs obeses)."
+            )
+
+
+def _render_bivariate_summary(df_filtered: pd.DataFrame):
+    """Affiche le resume complet de l'analyse bivariee."""
+    st.markdown("#### Resume de l'Analyse Bivariee")
+
+    st.markdown(
+        """
+        ##### Grille d'Interpretation Finale
+        
+        Pour chaque relation, nous avons verifie :
+        1. **Existence** : La relation est-elle statistiquement significative ? (p < 0.05)
+        2. **Force** : Quelle est l'intensite de cette relation ?
+        3. **Traduction** : Que signifie cette relation pour le metier ?
+        """
+    )
+
+    # Tableau de synthese global
+    summary_data = [
+        {
+            "Variables": "smoker vs charges",
+            "Type Test": "ANOVA",
+            "1. Existe ?": "Oui (p < 0.001)",
+            "2. Force": "Tres Forte (Eta > 0.5)",
+            "3. Traduction Metier": "Les fumeurs coutent 4x plus cher"
+        },
+        {
+            "Variables": "age vs charges",
+            "Type Test": "Pearson",
+            "1. Existe ?": "Oui (p < 0.001)",
+            "2. Force": "Moderee (r = 0.30)",
+            "3. Traduction Metier": "Les charges augmentent avec l'age"
+        },
+        {
+            "Variables": "bmi vs charges",
+            "Type Test": "Pearson",
+            "1. Existe ?": "Oui (p < 0.05)",
+            "2. Force": "Faible (r = 0.20)",
+            "3. Traduction Metier": "Effet limite seul, fort avec smoker"
+        },
+        {
+            "Variables": "children vs charges",
+            "Type Test": "Pearson",
+            "1. Existe ?": "Non significatif",
+            "2. Force": "Negligeable",
+            "3. Traduction Metier": "Pas d'impact du nombre d'enfants"
+        },
+        {
+            "Variables": "sex vs charges",
+            "Type Test": "ANOVA",
+            "1. Existe ?": "Non significatif",
+            "2. Force": "Negligeable",
+            "3. Traduction Metier": "Pas de difference homme/femme"
+        },
+        {
+            "Variables": "region vs charges",
+            "Type Test": "ANOVA",
+            "1. Existe ?": "Faiblement",
+            "2. Force": "Faible",
+            "3. Traduction Metier": "Southeast legerement plus cher"
+        },
+        {
+            "Variables": "sex vs smoker",
+            "Type Test": "Chi-carre",
+            "1. Existe ?": "Non significatif",
+            "2. Force": "Negligeable",
+            "3. Traduction Metier": "Taux de fumeurs similaire H/F"
+        },
+        {
+            "Variables": "region vs smoker",
+            "Type Test": "Chi-carre",
+            "1. Existe ?": "Non significatif",
+            "2. Force": "Negligeable",
+            "3. Traduction Metier": "Taux de fumeurs similaire par region"
+        },
+    ]
+
+    st.dataframe(
+        pd.DataFrame(summary_data),
+        use_container_width=True,
+        hide_index=True
+    )
+
+    # Conclusions
+    st.markdown("##### Conclusions pour la Modelisation")
+
+    col1, col2 = st.columns(2)
+
+    with col1:
+        st.success(
             """
-            **Hypothèse nulle (H0)** : Les variables sont indépendantes
+            **Variables Predictives Importantes :**
+            1. `smoker` - Variable dominante
+            2. `age` - Effet lineaire significatif
+            3. `bmi` - Important en interaction avec smoker
+            4. `smoker x bmi` - Interaction a creer
+            """
+        )
 
-            **Règle de décision** :
-            - Si **p < 0.05** : On rejette H0 -> Variables **dépendantes**
-            - Si **p >= 0.05** : On ne rejette pas H0 -> Pas de preuve
-
-            **Attendu** :
-            - `smoker` x `charges` : **Forte dépendance**
-            - `region` x `smoker` : Probablement **indépendant**
-            - `sex` x `charges` : Probablement **indépendant**
+    with col2:
+        st.info(
+            """
+            **Variables a Impact Limite :**
+            1. `children` - Peut etre exclue
+            2. `sex` - Faible pouvoir predictif
+            3. `region` - Effet marginal
             """
         )

@@ -43,3 +43,4 @@ streamlit
 plotly
 ydata-profiling
 statsmodels
+scikit-learn
