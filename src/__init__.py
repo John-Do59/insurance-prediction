@@ -1,0 +1,1 @@
+"""Package source pour l'application Insurance Analytics."""
