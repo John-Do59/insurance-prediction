@@ -25,6 +25,7 @@ from src.tabs import (
     render_tab_correlations,
     render_tab_expert,
     render_tab_modeling_prep,
+    render_tab_prediction,
 )
 
 
@@ -182,14 +183,14 @@ def render_synthesis(df_filtered):
         st.markdown(
             """
             **Transformations Recommandees :**
-            1. **Variable cible** : `log(charges)` pour reduire l'asymetrie
-            2. **Encodage** : Binary pour smoker/sex, One-Hot pour region
-            3. **Interactions** : `smoker * bmi`, `smoker * (bmi >= 30)`
-
-            **Metriques Attendues (Semaine 2) :**
-            - R2 baseline (sans interactions) : 0.70 - 0.75
-            - R2 avec interactions : 0.84 - 0.88
-            - RMSE cible : < 5000 $
+            1. **Interactions** : `bmi * smoker`, `is_obese_smoker` (Indispensable)
+            2. **Terme quadratique** : `age^2`
+            3. **Variable cible** : Pas de log necessaire avec les bons termes d'interaction
+            
+            **Metriques Obtenues (Semaine 2) :**
+            - R2 avec interactions : **0.9324**
+            - MAE cible : **< 2000 $**
+            - RMSE cible : **< 3200 $**
             """
         )
 
@@ -266,7 +267,8 @@ def main():
         tab_demo,
         tab_corr,
         tab_expert,
-        tab_modeling
+        tab_modeling,
+        tab_prediction
     ) = st.tabs([
         "Apercu des Donnees",
         "Distribution des Couts",
@@ -274,7 +276,8 @@ def main():
         "Demographie et Profils",
         "Correlations et Stats",
         "Analyses Expert",
-        "Preparation Modele"
+        "Preparation Modele",
+        "Prediction"
     ])
 
     with tab_overview:
@@ -297,6 +300,9 @@ def main():
 
     with tab_modeling:
         render_tab_modeling_prep(df_filtered)
+
+    with tab_prediction:
+        render_tab_prediction()
 
     # Synthese
     render_synthesis(df_filtered)

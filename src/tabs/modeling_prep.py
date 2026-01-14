@@ -617,17 +617,17 @@ X = df[features]
         "Modele": [
             "Regression Lineaire Simple",
             "Regression Lineaire + Interactions",
-            "Regression Lineaire + Log Transform + Interactions"
+            "Regression Lineaire + Interactions + Age² (Optimise)"
         ],
         "R2 Attendu": [
             "0.70 - 0.75",
-            "0.80 - 0.84",
-            "0.84 - 0.88"
+            "0.84 - 0.88",
+            "0.9324"
         ],
         "RMSE Attendu": [
             "6000 - 7000 $",
             "4500 - 5500 $",
-            "4000 - 5000 $"
+            "3150 - 3300 $"
         ]
     })
     st.dataframe(metrics_table, use_container_width=True, hide_index=True)

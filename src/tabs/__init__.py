@@ -7,6 +7,7 @@ from .demographics import render_tab_demographics
 from .correlations import render_tab_correlations
 from .expert import render_tab_expert
 from .modeling_prep import render_tab_modeling_prep
+from .prediction import render_tab_prediction
 
 __all__ = [
     "render_tab_overview",
@@ -16,4 +17,5 @@ __all__ = [
     "render_tab_correlations",
     "render_tab_expert",
     "render_tab_modeling_prep",
+    "render_tab_prediction",
 ]
