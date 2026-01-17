@@ -1,30 +1,34 @@
-# Insurance Charges Prediction - Semaine 1
+# Insurance Charges Prediction - Semaine 2
 
 ![Python](https://img.shields.io/badge/Python-3.12-blue)
 ![Streamlit](https://img.shields.io/badge/Streamlit-1.32-FF4B4B)
-![Plotly](https://img.shields.io/badge/Plotly-6.5-brightgreen)
-![Status](https://img.shields.io/badge/Semaine-1%20Complétée-success)
+![Scikit-Learn](https://img.shields.io/badge/Scikit--Learn-1.4-orange)
+![Status](https://img.shields.io/badge/Semaine-2%20Complétée-success)
 
-##  Présentation du Projet
+## 🎯 Présentation du Projet
 Ce projet est réalisé dans le cadre d'un cabinet d'analytique pour un assureur souhaitant anticiper ses charges médicales. L'objectif est de construire un modèle de régression linéaire fiable pour estimer les coûts à partir de variables démographiques et de santé.
 
-##  Structure du Dépôt
--   **data/** : Contient le dataset Kaggle `insurance.csv` (1338 entrées).
--   **notebooks/** : 
-    - `01_EDA.ipynb` : Analyse exhaustive, dictionnaire des variables et rapport automatique.
-    - `insurance_eda_report.html` : Rapport interactif généré par `ydata-profiling`.
--   **presentations/** : Espace de stockage pour les présentations hebdomadaires.
--   **app.py** : Dashboard interactif pour explorer les données en temps réel.
--   **requirements.txt** : Liste des dépendances du projet.
+## 🚀 Performance du Modèle (Fin Semaine 2)
+Nous avons atteint un niveau de performance exceptionnel dépassant les objectifs fixés :
+- **R² Score : 0.9390** (Objectif : 0.9324)
+- **MAE : $1,989.76**
+- **RMSE : $3,183.52**
 
-## Insights Clés (Semaine 1)
-L'Analyse Exploratoire des Données (EDA) a révélé plusieurs facteurs déterminants :
-1.  **Tabagisme** : C'est le facteur le plus corrélé aux charges. Un fumeur coûte en moyenne 3 à 4 fois plus cher qu'un non-fumeur.
-2.  **Synergie IMC x Fumeur** : Les charges explosent littéralement pour les fumeurs ayant un IMC > 30 (Obésité).
-3.  **Âge** : On observe une progression linéaire des charges moyennes avec l'âge, répartie en trois "bandes" distinctes.
-4.  **Distribution** : La variable cible `charges` est fortement asymétrique, ce qui justifiera une transformation logarithmique en Semaine 2.
+## 📂 Structure du Dépôt
+- **data/** : Contient le dataset Kaggle `insurance.csv`.
+- **notebooks/** : 
+    - `01_EDA.ipynb` : Analyse exhaustive et insights métier.
+    - `02_preprocessing_baseline_model.ipynb` : Data prep + Baseline + **Modèle Optimal**.
+- **app.py** : Dashboard interactif et outil de prédiction.
+- **SEMAINE_2_RECAP.md** : Rapport détaillé de la méthodologie et des tests de la semaine 2.
+- **requirements.txt** : Liste des dépendances.
 
-##  Installation & Utilisation
+## 💡 Insights & Méthodologie
+1. **Feature Engineering** : L'ajout d'interactions complexes (ex: `bmi * smoker * age`) et de termes polynomiales a été la clé du succès.
+2. **Régularisation** : Utilisation de la régression **Ridge (alpha=0.5)** pour stabiliser le modèle face au grand nombre de features (27).
+3. **Reproductibilité** : Utilisation d'une seed fixe (1282) garantissant la stabilité des résultats.
+
+## 🛠️ Installation & Utilisation
 1. **Environnement virtuel** :
 ```bash
 python -m venv .venv
@@ -41,10 +45,10 @@ pip install -r requirements.txt
 streamlit run app.py
 ```
 
-##  Roadmap
+## 🗺️ Roadmap
 - [x] **Semaine 1** : Analyse Exploratoire (EDA) & Dashboard Interactif.
-- [ ] **Semaine 2** : Préparation des données (Encodage, Scaling) & Premier modèle baseline.
-- [ ] **Semaine 3** : Optimisation des modèles & Mise en place d'un pipeline de production.
+- [x] **Semaine 2** : Data preparation & Modèle Optimal (R² : 0.9390).
+- [ ] **Semaine 3** : Mise en place des Pipelines Sklearn & Industrialisation.
 
 ---
 *Projet réalisé par l'équipe **Dev Data IA**.*
