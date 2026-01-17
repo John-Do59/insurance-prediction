@@ -1,6 +1,6 @@
 # Semaine 2 - Data Preparation + Premier Modèle
 
-## 📊 Résumé Exécutif
+## Résumé Exécutif
 
 **Objectif atteint et dépassé !** 
 - R² = **0.9390** (objectif 0.9324 dépassé de +0.66%)
@@ -9,7 +9,7 @@
 
 ---
 
-## 🎯 Cheminement pour Atteindre le Score
+## Cheminement pour Atteindre le Score
 
 ### 1. **Baseline - Point de Départ**
 - **Modèle** : LinearRegression simple
@@ -49,7 +49,7 @@
 
 ---
 
-## 📈 Résultats Comparatifs
+## Résultats Comparatifs
 
 | Métrique | Baseline | Optimal | Amélioration |
 |----------|----------|---------|--------------|
@@ -61,7 +61,7 @@
 
 ---
 
-## 🔍 Analyse des Erreurs
+## Analyse des Erreurs
 
 ### Baseline
 - **Erreurs fortes** : Fumeurs avec BMI élevé (>35)
@@ -75,34 +75,34 @@
 
 ---
 
-## 🛠️ Conformité avec le Brief Semaine 2
+## Conformité avec le Brief Semaine 2
 
-### ✅ Fonctionnalités Obligatoires
+### Fonctionnalités Obligatoires
 
 #### 1. Split & Protocole d'Évaluation
-- ✅ `train_test_split` avec seed fixe (random_state=1282)
-- ✅ Métriques : MAE, RMSE, R²
-- ✅ Reproductibilité assurée
+- [x] `train_test_split` avec seed fixe (random_state=1282)
+- [x] Métriques : MAE, RMSE, R²
+- [x] Reproductibilité assurée
 
 #### 2. Préparation des Données
-- ✅ Encodage catégoriel (smoker_yes, region_southeast)
-- ✅ Pas de valeurs manquantes dans le dataset
-- ✅ Gestion des doublons (drop_duplicates)
+- [x] Encodage catégoriel (smoker_yes, region_southeast)
+- [x] Pas de valeurs manquantes dans le dataset
+- [x] Gestion des doublons (drop_duplicates)
 
 #### 3. Baseline : Régression Linéaire
-- ✅ Entraînement et évaluation
-- ✅ Interprétation des coefficients
-- ✅ Analyse des erreurs par segment
+- [x] Entraînement et évaluation
+- [x] Interprétation des coefficients
+- [x] Analyse des erreurs par segment
 
-### ✅ Bonus Semaine 2
+### Bonus Semaine 2
 
-- ✅ **Comparaison LinearRegression vs Ridge vs Lasso**
-- ✅ **Features avancées** : smoker×bmi, age², et 25 autres !
-- ✅ **Mini app Streamlit** : Prédiction + visualisations
+- [x] **Comparaison LinearRegression vs Ridge vs Lasso**
+- [x] **Features avancées** : smoker×bmi, age², et 25 autres !
+- [x] **Mini app Streamlit** : Prédiction + visualisations
 
 ---
 
-## 🔑 Facteurs Clés du Succès
+## Facteurs Clés du Succès
 
 ### 1. **Interaction bmi × smoker** (Impact majeur)
 - Capture l'effet exponentiel des fumeurs obèses
@@ -126,7 +126,7 @@
 
 ---
 
-## 💻 Implémentation Technique
+## Implémentation Technique
 
 ### Code Principal
 ```python
@@ -153,7 +153,7 @@ RMSE = $3183.52
 
 ---
 
-## 📊 Visualisations Créées
+## Visualisations Créées
 
 1. **Valeurs Réelles vs Prédictions**
    - Scatter plot avec ligne de prédiction parfaite
@@ -165,7 +165,7 @@ RMSE = $3183.52
 
 ---
 
-## 🚀 Prochaines Étapes (Semaine 3)
+## Prochaines Étapes (Semaine 3)
 
 ### Pipeline scikit-learn
 - [ ] ColumnTransformer (num/cat)
@@ -188,7 +188,7 @@ RMSE = $3183.52
 
 ---
 
-## 📝 Décisions Techniques
+## Décisions Techniques
 
 ### Pourquoi Ridge et pas LinearRegression ?
 
@@ -209,18 +209,18 @@ RMSE = $3183.52
 
 ---
 
-## 📦 Livrables Semaine 2
+## Livrables Semaine 2
 
-- ✅ Notebook `02_preprocessing_baseline_model.ipynb` complété
-- ✅ Baseline + Modèle optimal implémentés
-- ✅ Analyse des erreurs documentée
-- ✅ Visualisations des résultats
-- ✅ Code reproductible (seed fixe)
-- ✅ Application Streamlit fonctionnelle
+- [x] Notebook `02_preprocessing_baseline_model.ipynb` complété
+- [x] Baseline + Modèle optimal implémentés
+- [x] Analyse des erreurs documentée
+- [x] Visualisations des résultats
+- [x] Code reproductible (seed fixe)
+- [x] Application Streamlit fonctionnelle
 
 ---
 
-## 🎓 Apprentissages Clés
+## Apprentissages Clés
 
 1. **Feature Engineering est crucial** : +16.4% de R² grâce aux interactions
 2. **Les interactions triples capturent les effets complexes**
