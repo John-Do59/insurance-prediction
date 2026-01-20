@@ -15,7 +15,7 @@ def render_tab_inside_model(df):
     Affiche l'analyse interne du modèle (Coefficients, SHAP).
     
     Parameters
-    ----------
+    
     df : pd.DataFrame
         Le dataframe complet (utilisé pour un échantillon SHAP).
     """
