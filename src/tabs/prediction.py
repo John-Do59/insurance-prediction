@@ -7,25 +7,33 @@ import pandas as pd
 import joblib
 import numpy as np
 import os
+import shap
+import matplotlib.pyplot as plt
 
 def render_tab_prediction():
     """Affiche l'onglet de prediction interactive."""
-    st.subheader("🔮 Predicteur de Charges d'Assurance")
+    st.subheader(" Predicteur de Charges d'Assurance")
     
     st.markdown(
         """
-        Cette interface utilise notre **modele lineaire optimise (R² = 0.9324)** 
+        Cette interface utilise notre **modele lineaire optimise (Ridge)** 
         pour estimer vos frais medicaux annuels en fonction de votre profil.
         """
     )
 
     # Chargement du modele
-    model_path = "models/model.joblib"
+    model_path = "models/insurance_model_prod.joblib"
+    explainer_path = "models/shap_explainer.joblib"
+    
     if not os.path.exists(model_path):
-        st.error("Le modele n'est pas encore genere. Veuillez executer le script d'entrainement.")
+        st.error("Le modele n'est pas encore genere. Veuillez executer le notebook 03.")
         return
 
-    model = joblib.load(model_path)
+    try:
+        model = joblib.load(model_path)
+    except Exception as e:
+        st.error(f"Erreur lors du chargement du modele : {e}")
+        return
 
     # Formulaire
     with st.form("prediction_form"):
@@ -44,8 +52,7 @@ def render_tab_prediction():
         submit = st.form_submit_button("Calculer l'estimation")
 
     if submit:
-        # Preparation des donnees (le format doit correspondre exactement a X lors du fit)
-        # On cree un DataFrame avec les memes noms de colonnes originales
+        # Preparation des donnees
         input_data = pd.DataFrame({
             "age": [age],
             "sex": [sex],
@@ -55,34 +62,60 @@ def render_tab_prediction():
             "region": [region]
         })
 
-        # Calcul des features ingenierees (necessaire avant de passer au pipeline)
-        # Note: Le pipeline contient le preprocesseur, mais pas les transformations de colonnes 
-        # effectuees avant le fit (age2, bmi_smoker, is_obese_smoker)
-        # On doit les ajouter ici car le modele a ete entraine AVEC ces colonnes supplementaires dans X.
-        
-        input_data['is_obese_smoker'] = ((input_data['bmi'] >= 30) & (input_data['smoker'] == 'yes')).astype(int)
-        input_data['bmi_smoker'] = input_data['bmi'] * input_data['smoker'].map({'yes': 1, 'no': 0})
-        input_data['age2'] = input_data['age'] ** 2
+        # Feature Engineering AUTOMATIQUE via le Pipeline
+        # On n'a plus besoin de calculer manuellement les interactions ici !
+        # Le pipeline s'en charge.
 
-        # Prediction
-        prediction = model.predict(input_data)[0]
+        try:
+            # Prediction
+            prediction = model.predict(input_data)[0]
 
-        # Affichage du resultat
-        st.markdown("---")
-        c1, c2 = st.columns([1, 2])
-        
-        with c1:
-            st.markdown(f"### Estimation :\n# {prediction:,.2f} $")
-        
-        with c2:
-            # Message contextuel
-            if smoker == "Oui" and bmi >= 30:
-                st.warning("⚠️ Profil a haut risque (Obese + Fumeur). Les charges sont fortement augmentees par l'interaction de ces deux facteurs.")
-            elif age > 50:
-                st.info("ℹ️ L'age avance contribue de maniere polynomiale a l'augmentation des frais.")
-            else:
-                st.success("✅ Votre profil presente des charges estimees moderees.")
+            # Affichage du resultat
+            st.markdown("---")
+            c1, c2 = st.columns([1, 2])
+            
+            with c1:
+                st.markdown(f"### Estimation :\n# {prediction:,.2f} $")
+            
+            with c2:
+                if smoker == "Oui" and bmi >= 30:
+                    st.warning(" Profil a haut risque (Obese + Fumeur).")
+                elif age > 50:
+                    st.info(" L'age contribue a l'augmentation des frais.")
+                else:
+                    st.success(" Estimation moderee.")
 
-        # Explication visuelle simple
-        st.progress(min(prediction / 64000, 1.0))
-        st.caption("Positionnement de l'estimation par rapport au maximum du dataset (~64k $)")
+            st.progress(min(max(prediction, 0) / 64000, 1.0))
+
+            # Explication SHAP
+            if os.path.exists(explainer_path):
+                st.markdown("---")
+                st.subheader(" Comprendre cette prediction (SHAP)")
+                
+                with st.spinner("Calcul des facteurs d'influence..."):
+                    try:
+                        explainer = joblib.load(explainer_path)
+                        
+                        # Il faut transformer les donnees comme lors de l'entrainement pour SHAP
+                        # 1. Feature Engineering
+                        eng_step = model.named_steps['engineer']
+                        prep_step = model.named_steps['preprocessor']
+                        
+                        X_eng = eng_step.transform(input_data)
+                        X_trans = prep_step.transform(X_eng)
+                        
+                        # Calcul SHAP val
+                        shap_values = explainer(X_trans)
+                        
+                        # Waterfall plot
+                        fig, ax = plt.subplots(figsize=(10, 5))
+                        shap.plots.waterfall(shap_values[0], show=False, max_display=10)
+                        st.pyplot(fig)
+                        
+                        st.caption("Ce graphique montre comment chaque caracteristique contribue a augmenter (rouge) ou diminuer (bleu) la prediction par rapport a la moyenne.")
+                        
+                    except Exception as e:
+                        st.warning(f"Impossible d'afficher l'explication detaillee : {e}")
+            
+        except Exception as e:
+            st.error(f"Erreur lors de la prediction : {e}")
