@@ -99,11 +99,15 @@ def render_tab_inside_model(df):
                 
                 # Calcul SHAP
                 shap_values = explainer(X_trans)
-                shap_values.feature_names = feature_names # Assign names
+                
+                # Assign names (cast to list to avoid numpy errors)
+                shap_values.feature_names = list(feature_names)
                 
                 # Plot
                 fig, ax = plt.subplots(figsize=(10, 8))
-                shap.summary_plot(shap_values, X_trans, feature_names=feature_names, show=False)
+                plt.title("Importance Globale des Features (Impact absolu moyen)")
+                # Pass list of feature names explicitly and use bar plot
+                shap.summary_plot(shap_values, X_trans, feature_names=list(feature_names), plot_type="bar", show=False)
                 st.pyplot(fig)
                 
             except Exception as e:

@@ -107,9 +107,13 @@ def render_tab_prediction():
                         # Calcul SHAP val
                         shap_values = explainer(X_trans)
                         
-                        # Waterfall plot
+                        # Assign feature names to correct "feature 1, feature 2..." issue
+                        feature_names = prep_step.get_feature_names_out()
+                        shap_values.feature_names = list(feature_names)
+                        
+                        # Bar plot (simpler than waterfall)
                         fig, ax = plt.subplots(figsize=(10, 5))
-                        shap.plots.waterfall(shap_values[0], show=False, max_display=10)
+                        shap.plots.bar(shap_values[0], show=False, max_display=10)
                         st.pyplot(fig)
                         
                         st.caption("Ce graphique montre comment chaque caracteristique contribue a augmenter (rouge) ou diminuer (bleu) la prediction par rapport a la moyenne.")

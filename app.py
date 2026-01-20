@@ -11,6 +11,7 @@ from src.config import setup_page_config, apply_custom_css
 
 # Chargement des donnees
 from src.data_loader import load_data_with_error_handling
+from src.feature_engineering import FeatureEngineer
 
 # Composants
 from src.components.sidebar import render_sidebar
