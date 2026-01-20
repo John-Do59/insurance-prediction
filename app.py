@@ -26,8 +26,8 @@ from src.tabs import (
     render_tab_expert,
     render_tab_modeling_prep,
     render_tab_prediction,
+    render_tab_inside_model,
 )
-
 
 def render_synthesis(df_filtered):
     """
@@ -268,7 +268,8 @@ def main():
         tab_corr,
         tab_expert,
         tab_modeling,
-        tab_prediction
+        tab_prediction,
+        tab_inside
     ) = st.tabs([
         "Apercu des Donnees",
         "Distribution des Couts",
@@ -277,7 +278,8 @@ def main():
         "Correlations et Stats",
         "Analyses Expert",
         "Preparation Modele",
-        "Prediction"
+        "Prediction",
+        "Inside the Model"
     ])
 
     with tab_overview:
@@ -303,6 +305,9 @@ def main():
 
     with tab_prediction:
         render_tab_prediction()
+
+    with tab_inside:
+        render_tab_inside_model(df)
 
     # Synthese
     render_synthesis(df_filtered)

@@ -8,6 +8,7 @@ from .correlations import render_tab_correlations
 from .expert import render_tab_expert
 from .modeling_prep import render_tab_modeling_prep
 from .prediction import render_tab_prediction
+from .inside_model import render_tab_inside_model
 
 __all__ = [
     "render_tab_overview",
@@ -18,4 +19,5 @@ __all__ = [
     "render_tab_expert",
     "render_tab_modeling_prep",
     "render_tab_prediction",
+    "render_tab_inside_model",
 ]
