@@ -21,3 +21,4 @@ notebooks/*.pdf
 
 # Système
 .DS_Store
+mlruns/
