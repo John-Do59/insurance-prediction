@@ -621,13 +621,13 @@ X = df[features]
         ],
         "R2 Attendu": [
             "0.70 - 0.75",
-            "0.84 - 0.88",
-            "0.9324"
+            "0.82 - 0.86",
+            "0.8857"
         ],
         "RMSE Attendu": [
             "6000 - 7000 $",
-            "4500 - 5500 $",
-            "3150 - 3300 $"
+            "4500 - 5000 $",
+            "~4500 $"
         ]
     })
     st.dataframe(metrics_table, use_container_width=True, hide_index=True)
@@ -638,8 +638,8 @@ X = df[features]
         **Le dataset est pret pour la modelisation.**
         
         Points cles :
-        - Appliquer la transformation log sur la variable cible
-        - Inclure les variables d'interaction smoker x bmi
-        - Le modele complet devrait atteindre un R2 de 0.85+
+        - Appliquer les transformations (interactions smoker x bmi, age²)
+        - Utiliser un pipeline scikit-learn pour automatiser le preprocessing
+        - Le modele optimise atteint un R2 de 0.8857 avec Ridge (alpha=0.1)
         """
     )

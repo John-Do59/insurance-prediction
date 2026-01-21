@@ -188,10 +188,10 @@ def render_synthesis(df_filtered):
             2. **Terme quadratique** : `age^2`
             3. **Variable cible** : Pas de log necessaire avec les bons termes d'interaction
             
-            **Metriques Obtenues (Semaine 2) :**
-            - R2 avec interactions : **0.9324**
-            - MAE cible : **< 2000 $**
-            - RMSE cible : **< 3200 $**
+            **Metriques Obtenues (Semaine 3 - Pipeline Optimisé) :**
+            - R² avec Pipeline Ridge optimisé : **0.8857**
+            - MAE : **$2,884.67**
+            - CV R² (5-fold) : **0.8250**
             """
         )
 
