@@ -18,6 +18,7 @@ notebooks/*.pdf
 # Données (souvent volumineuses)
 # data/
 # data/*.csv
+notebooks/models
 
 # Système
 .DS_Store
