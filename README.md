@@ -104,26 +104,26 @@ mlflow ui --backend-store-uri file:./mlruns
 
 ## Roadmap
 
-### ✅ Semaine 1 : Exploration des Données (EDA)
+###  Semaine 1 : Exploration des Données (EDA)
 - Analyse exploratoire exhaustive
 - Dashboard Streamlit interactif
 - Identification des insights métier clés
 
-### ✅ Semaine 2 : Préparation & Modèle Baseline
+###  Semaine 2 : Préparation & Modèle Baseline
 - Feature Engineering (interactions, termes polynomiales)
 - Modèles baseline : LinearRegression, Ridge, Lasso
 - Performance : R² = 0.8856 (LinearRegression)
 
-### ✅ Semaine 3 : Pipeline & Optimisation (COMPLÉTÉE)
-- ✅ Pipeline scikit-learn complet avec ColumnTransformer
-- ✅ Validation croisée (5-fold)
-- ✅ GridSearchCV pour optimisation des hyperparamètres
-- ✅ Comparaison Ridge/Lasso/ElasticNet
-- ✅ Sélection du modèle optimal (Ridge alpha=0.1, R² = 0.8857)
-- ✅ MLflow pour tracking des expériences
-- ✅ Analyse des résidus et vérification des hypothèses
-- ✅ Interprétabilité SHAP et Permutation Importance
-- ✅ Dashboard Streamlit V2 (prédiction + explication)
+###  Semaine 3 : Pipeline & Optimisation (COMPLÉTÉE)
+- Pipeline scikit-learn complet avec ColumnTransformer
+- Validation croisée (5-fold)
+-  GridSearchCV pour optimisation des hyperparamètres
+-  Comparaison Ridge/Lasso/ElasticNet
+-  Sélection du modèle optimal (Ridge alpha=0.1, R² = 0.8857)
+-  MLflow pour tracking des expériences
+-  Analyse des résidus et vérification des hypothèses
+-  Interprétabilité SHAP et Permutation Importance
+-  Dashboard Streamlit V2 (prédiction + explication)
 
 ---
 *Projet réalisé par l'équipe **Dev Data IA**.*
